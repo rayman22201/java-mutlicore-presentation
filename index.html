@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="en">
+
+    <head>
+        <meta charset="utf-8">
+
+        <title>Pinciples of Java Multicore Programming</title>
+
+        <meta name="description" content="A discussion about the fundamential techniques and caveats in Java multicore programming">
+        <meta name="author" content="Ray Imber">
+
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+        <link rel="stylesheet" href="reveal-js/css/reveal.css">
+        <link rel="stylesheet" href="reveal-js/css/theme/default.css" id="theme">
+
+        <!-- For syntax highlighting -->
+        <link rel="stylesheet" href="reveal-js/lib/css/zenburn.css">
+
+        <link rel="stylesheet" href="reveal-js/css/print/pdf.css" type="text/css" media="print">
+
+        <!--[if lt IE 9]>
+        <script src="lib/js/html5shiv.js"></script>
+        <![endif]-->
+    </head>
+
+    <body>
+
+        <div class="reveal">
+            <!-- Any section element inside of this container is displayed as a slide -->
+            <div class="slides">
+                <section>
+                    <h1>Principles of <em style="color:#D7AB8C;">Java</em> Multicore Programming</h1>
+                    <h3>Techniques and Caveats</h3>
+                    <p>
+                        <small>Created by <a href="http://github.com/rayman22201">Ray Imber</a></small>
+                    </p>
+                </section>
+                <section data-markdown data-vertical="^\n\n">
+                    <script type="text/template">
+                        ## A Quick Overview
+
+                        * Why Java?
+
+                        * Basic Syntax and Semantics
+
+                        * Implementation details and Caveats
+
+
+                        ## Why Java?
+
+                        * Java runs on many devices.
+
+                        * The VM abstracts many details.
+
+                        * Java has specific language concepts and structures for dealing with parallelism.
+
+                            * These structures have their own *peculiariarities* in behavior
+
+                            * Parallelism in an Object Oriented Language
+
+                        Note:
+                        Java runs on many devices. This is both an advantage and a disadvantage.
+
+                        We are going to discuss the basic syntax and semantic rules for dealing with parallelism in Java.
+
+                        We will discuss some of the more advanced details of Java parrallel semantics and the problems
+                        that can occur.
+                    </script>
+                </section>
+                <section data-markdown data-vertical="^\n\n\n">
+                    <script type="text/template">
+                        ## Java Threads
+
+                        * Java has a *thread Object*.
+
+                            * Represents the thread itself, not the executed logic.
+
+                        * Thread Object executes Objects that implement the *Runnable Interface*.
+
+                            * The Runnable object can subclass a class other than Thread.
+
+                            * This approach is more flexible
+
+                            * Applicable to the high-level thread management APIs covered later
+
+
+
+                        ## The Runnable Interface
+
+                        * The Runnable Interface has one method: *public void run()*.
+
+                        * run takes no arguments and returns nothing.
+
+                            * How is Thread communication achieved?
+
+                            * (We will discuss this in much greater detail soon)
+
+
+
+                        ## A Simple Example
+
+                        ```java
+                        public class HelloRunnable *implements Runnable* {
+
+                            *public void run()* {
+                                System.out.println("Hello from a thread!");
+                            }
+
+                            public static void main(String args[]) {
+                                *(new Thread(new HelloRunnable())).start();*
+                            }
+
+                        }
+                        ```
+
+                    </script>
+                </section>
+                <section data-markdown data-vertical="^\n\n\n">
+                    ## Sleep, Interrupt, and Join
+                    #### Join me while I sleep and don't Interrupt :-P
+
+
+
+                    # Sleep
+                    * `Thread.sleep` causes the current thread to suspend execution for a specified period.
+
+                    * Two Versions of Sleep:
+                      * Millisecond Accuracy
+                      * Nanosecond Accuracy
+
+                    * Sleep times are not guaranteed to be precise
+                      * Limited by the OS.
+
+
+
+                    ## Interrupts
+                    * Indication to a thread that it should stop what it is doing and do something else.
+                      * That usually means the thread just terminates, but it could do other things.
+
+                    * Two ways of dealing with Interrupts
+                      * High Level: catch `InterruptedException`
+                      * Low Level: check the `Thread.interrupted()` flag
+
+
+
+
+                    ## Example
+                    #### Using Exceptions
+
+                    ```java
+                    for (int i = 0; i < importantInfo.length; i++)
+                    {
+                        // Pause for 4 seconds
+                        try
+                        {
+                            *Thread.sleep(4000);*
+                        }
+                        *catch (InterruptedException e)*
+                        {
+                            // We've been interrupted: no more messages.
+                            return;
+                        }
+                        // Print a message
+                        System.out.println(importantInfo[i]);
+                    }
+                    ```
+
+
+
+                    ## Example
+                    #### Using the Interrupt flag
+
+                    ```java
+                    for (int i = 0; i < inputs.length; i++)
+                    {
+                        heavyProcessing(inputs[i]);
+                        *if (Thread.interrupted())*
+                        {
+                            // We've been interrupted: no more crunching.
+                            return;
+                        }
+                    }
+                    ```
+
+
+
+
+                    ## OR
+                    #### Throw our own InterruptedException
+
+                    ```java
+                    for (int i = 0; i < inputs.length; i++)
+                    {
+                        heavyProcessing(inputs[i]);
+                        *if (Thread.interrupted())*
+                        {
+                            *throw new InterruptedException();*
+                        }
+                    }
+                    ```
+
+
+
+                    ## Causing Interrupts Yourself
+                    * You can interrupt a thread yourself using `Thread.interrupt()`
+                      * This sets the internal interrupt flag to true for a *particular thread*.
+                      * No guarantee that the thread will respect your interrupt request!
+
+
+
+                    ## Join
+                    * `Thread.join()` causes one thread to wait for another.
+
+                    * `Join` throws interruptedExcpetions, just like `sleep`.
+
+                    * You can pass an optional timeout to limit the amount of time the thread will wait.
+
+
+
+
+                    ## Example
+
+                    ```java
+                    public static void main(String args[])
+                        throws InterruptedException {
+                            Thread t = new Thread(new WorkerObject());
+                            t.start();
+                            // Wait maximum of 1 second
+                            // for Thread
+                            // to finish.
+                            *t.join(1000);*
+
+                            *if ( t.isAlive() )* {
+                                // Tired of waiting!
+                                *t.interrupt();*
+                                // Shouldn't be long now
+                                // -- wait indefinitely
+                                *t.join();*
+                            }
+                        }
+                    ```
+                </section>
+                <section data-markdown data-vertical="^\n\n\n" class="small-ul">
+                    ## High Level API's
+
+                    * Thread Pools
+
+                    * Concurrent Collections
+
+
+
+                    ## Thread Pools
+                    #### Let's go swimming
+                    * In large-scale applications, it makes sense to separate thread management and creation from the rest of the application
+
+                    * Known as *executors* in Java
+
+                    * Thread Pools are the most common kind of executor.
+
+
+
+                    ## What do Thread Pools do?
+                    * Creating new Threads is expensive in terms of memory and time for creation.
+
+                    * Instead of creating a new Thread for each new job, ad-hoc.
+                    * Create a pre-defined set of worker Threads at the begining of the program.
+                    * These worker threads never terminate.
+                        * They wait for a job.
+                        * They Execute the job.
+                        * They are then recycled.
+
+                    ***
+                    [See Java Docs for more info](http://docs.oracle.com/javase/tutorial/essential/concurrency/pools.html)
+
+
+
+                    ## Concurrent Collections
+                    * Pre-built data-structures and algorithms provided by Oracle that are Thread Safe and Thread Optimized.
+
+                    * These are *NOT* built into the language. They are libraries, provided for your convenience.
+
+                    * Many of these libraries are implemenations based on the theories from this course.
+
+                    ***
+                    [See Java Docs for more info](http://docs.oracle.com/javase/tutorial/essential/concurrency/collections.html)
+
+
+
+                    ## Common Concurrent Collections
+                    - BlockingQueue:
+                        * A FIFO data structure that blocks or times out on add to a full queue, or retrieve from an empty queue.
+                    - ConcurrentHashMap:
+                        * A concurrent analog of HashMap.
+                    - ConcurrentSkipListMap:
+                        * A concurent analog of a Red-Black tree.
+                    - ThreadLocalRandom:
+                        * A thread optimized random number generator.
+                        * `Math.random()` is thread safe, but performs badly.
+
+                </section>
+                <section data-markdown data-vertical="^\n\n\n">
+                    ## Java Memory Models
+                    #### It's all about sharing
+
+
+
+                    ## Thread State
+                    * A Thread State has three parts
+                        * Program Counter
+                        * (Thread) Local Variables
+                        * Shared Variables
+
+
+
+                    ## Shared vs Local Variables
+                    * Thread communication is achieved through Shared Variables.
+
+                    * All memory in Java must be contained in Objects.
+                        * Must have a way to seperate Shared memory from Local memory.
+                        * We must use a model to conceptualize this separation.
+
+
+
+                    ## Java Object Models
+                    * Two Object Models for Thread Variables
+                        * One Thread / One Object
+                        * Multiple Threads / One Object
+
+
+
+                    ## One Thread / One Object
+                    ![One Thread One Object Memory Model](images/one-thread-one-object.jpg)
+
+
+
+
+                    ## Example
+
+                    ```java
+                    Thread thread[] = new Thread[maxThreads];
+                    for( int i = 0 ; i < maxThreads ; i++ )
+                    {
+                        thread[i] = *new Thread(new Worker())*;
+                    }
+                    ```
+
+
+
+                    ## Multiple Threads / One Object
+                    ![Multiple Threads One Object Memory Model](images/multiple-threads-one-object.jpg)
+
+
+
+
+                    ## Example
+
+                    ```java
+                    Thread thread[] = new Thread[maxThreads];
+                    Worker *singleRunnable = new Worker()*;
+                    for( int i = 0 ; i < maxThreads ; i++ )
+                    {
+                        thread[i] = *new Thread(singleRunnable)*;
+                    }
+                    ```
+                </section>
+                <section data-markdown data-vertical="^\n\n\n" data-notes="^Note:" class="small-ul">
+                    ## Locks and Atomic Variables in Java
+                    * Synchronized
+                    * Volatile
+                </section>
+                <section data-markdown data-vertical="^\n\n\n" data-notes="^Note:" class="small-ul">
+                    ## Synchronized
+                    #### Locking in Java
+                    * Synchronized is implemented with a *Monitor Lock*
+                        * See Chapter 8 of the textbook (pg.177).
+
+                    * Two Ways to use
+                        * Synchronized Methods
+                        * Synchronized Statements
+
+
+
+                    ## Synchronized Methods
+                    * Simplest way to use locks in Java.
+
+                    * The entire method becomes a critical section.
+
+                    * The lock is attached to `this`.
+
+                    * `Static Synchronized` lock is attached to the *class* object.
+
+
+
+                    ## Example
+                    ```java
+                    public class SynchronizedCounter
+                    {
+                        private int c = 0;
+                        private static int s = 1;
+
+                        *public synchronized* void increment() {
+                            c++;
+                        }
+
+                        *public synchronized* int value() {
+                            return c;
+                        }
+
+                        *public static synchronized* int staticValue() {
+                            return s;
+                        }
+                    }
+                    ```
+
+
+
+                    ## Memory Model
+                    ![Sync on Class Object](images/lock_on_class.jpg)
+
+
+
+                    ## Synchronized Statements
+                    * More control than synchronized methods.
+
+                    * Define a specific block of statements to be the critical section.
+
+                    * More efficient than locking the whole method.
+
+                    * Can control which lock you use.
+
+
+
+                    ## Example
+                    ```java
+                    public class MsLunch
+                    {
+                        private long c1 = 0;
+                        private long c2 = 0;
+                        *private Object extLock = new Object();*
+
+                        public void inc1() {
+                            *synchronized(this)* {
+                                c1++;
+                            }
+                        }
+
+                        public void inc2() {
+                            *synchronized(extLock)* {
+                                c2++;
+                            }
+                        }
+                    }
+                    ```
+                    Note: extLock is just a generic object. All Objects in Java have a monitor lock built in. It's part of the language. ANY object can be used as a lock because of this property. Be careful when interleiving locks!
+
+
+
+                    ## Memory Model
+                    ![Locking on an external helper object](images/lock_on_object.jpg)
+
+
+
+
+                    ## Code Example
+                    ```java
+                    private *static int x*;
+
+                    private void readAndWrite() {
+                        int temp;
+                        *synchronized(this)*{
+                            // Update Shared Class Variable
+                            temp = x;// Read x
+                            temp=temp+1;// increment x
+                            x=temp;// write x
+                        }
+                    }
+                    ...
+                    public static void main(String args[]) {
+                        Thread thread[] = new Thread[maxThreads];// Create a thread array
+                        for( int i = 0 ;i < maxThreads ; i++ ) {
+                            thread[i] = new Thread(*new BadSync()*);
+                        }
+                    }
+                    ```
+
+
+
+                    ## Dangers of Improper Locking
+                    ![Each object locks on itself](images/lock_on_this.jpg)
+                    </section>
+                    <section data-markdown data-vertical="^\n\n\n" data-notes="^Note:" class="small-ul">
+                    ## Atomic Operations
+                    * What operations are Atomic in Java?
+
+                    * Reads and writes are atomic for reference variables and for *most* primitive variables
+                        * Except long and double.
+
+                    * Reads and writes are atomic for all variables declared volatile
+                        * Including long and double.
+
+                    * Memory consistency errors are still possible!
+
+                    Note: Atomic does not mean the cache will be synced properly. A write will be Atomic, but that does not guarantee that another thread will see that write immediately.
+
+
+
+
+                    ## Volatile
+                    * Makes *any* variable atomic. This includes objects (but not necessarily properties of the object)!
+                        * a.k.a pointers
+                        * 64 bit variables : doubles and longs
+
+                    * A write to a volatile variable establishes a happens-before relationship with subsequent reads of that same variable
+
+                    * Side effects that lead up to the change of the variable are also completely visible.
+
+                    Note: All threads flushing their cache, is obviously a huge performance hit! Use Volatile conservatively.
+
+
+
+                    ## Volatile Cons
+                    * Volatile is awesome, why should we ever use Synchronized?
+
+                    * Volatile only works for simple reads and writes.
+                        * No complex logic.
+
+                    * Only applys to An Object's Reference not it's properties.
+                        * This applies to arrays and array elements as well.
+
+                    * Volatile only guarantees order inside a single thread is preserved.
+                        * This is a special guarantee that can be difficult to reason about.
+                        * Happens Before does not guarantee total ordering!
+
+
+
+                    ## Example
+                    ```java
+                    class VolatileTest {
+                        static *volatile* int i = 0, j = 0;
+
+                        static void threadOne() { *i++; j++;* }
+
+                        static void threadTwo() { System.out.println(*"i=" + i* + *" j=" + j*); }
+
+                        }
+                    ```
+                    Note: i will always increment before j, but thread 2 could read a value for i, sleep for a very long time, and then come back and read a MUCH larger value for j. This would not happen with Synchronized. Volatile is important for implementing complex non-blocking data-structures and algorithms, but it is not a replacement for locks / synchronized.
+
+
+
+                    ## Volatile Perfomance vs. Synchronized Performance
+                    * Volatile and Synchronized force cpu caches to be flushed on a write.
+                        * Synchronized flushes all caches.
+                        * Volatile flushes only the cache block containing the written variable.
+
+                    * Volatile can never have a higher overhead than synchronized.
+                        * Synchronized has to do locking and unlocking overhead.
+                        * Volatile does not have any lock overhead.
+
+                    * Synchronized can have the same overhead if the compiler (JIT) is able to optimize it.
+
+
+
+
+                    ## The Cost of a Volatile Cache Flush
+                    ![Graph showing the performance loss from Volatile](images/volatile_performance_graph.jpg)
+                </section>
+                <section data-markdown data-vertical="^\n\n\n" class="small-ul">
+                    ## Implementation Details
+                    #### The Devil is in the details
+
+                    * CPU Scheduler
+
+                    * Memory Consistency
+
+                    * Compiler Transformations
+
+                    * Semantic Rules
+
+
+
+                    ## Ordering of Events
+
+                    * Everything before an unlock (release) is Visible to everything after a later lock (acquire) on the same Object
+
+                    * The release pushes the updates...
+
+
+
+
+                    ## Happens Before
+
+                    * Happens-before is transitive
+                    * Data races are avoided if you use "happens-before"
+                    * Action in VM. Not lines of code (Assembly Instructions)
+                    * There are tools that can check for data races
+                        * JProbe - tool for java
+
+
+
+
+
+
+                    ## Expectations
+                    * You would expect that the following over simplification would be true:
+
+                    1. Get lock
+                    2. Make updates
+                    3. Push cache to main memory
+                    4. Release lock
+
+                    * You are NOT guaranteed to get this
+
+
+
+
+
+                    ## Compiler Transformations
+                    * Memory Accesses can be moved into a lock!
+                    * One threads reads a variable and continually checks just that variable.
+                    * Continues to read until a different thread changes the variable.
+                    * compiler "may" look at the code and see that all the loop does is read the same variable, which never changes
+                    * It "optimizes" it just by making it into an infinite loop and avoid the reads all together.
+
+
+
+
+                    ## Example
+                    #### You write this:
+
+                    ```java
+                    class OptimizeMe {
+
+                        static boolean checkMe = true;
+
+                        public threadOne() {
+                            *while(checkMe == true)* {
+                                //Do something that does not change the value of checkMe.
+                            }
+                        };
+
+                        public threadTwo() {
+                            Thread.sleep(4000);
+                            *checkMe = false;*
+                        }
+                    }
+                    ```
+
+
+
+
+                    ## Example (Transformed)
+                    #### A naive compiler may try to transform the code into this:
+
+                    ```java
+                    class OptimizeMe {
+
+                        static boolean checkMe = true;
+
+                        public threadOne() {
+                            *while(true)* {
+                                //Do something that does not change the value of checkMe.
+                            }
+                        };
+
+                        public threadTwo() {
+                            Thread.sleep(4000);
+                            checkMe = false;
+                        }
+                    }
+                    ```
+
+
+
+
+                    ## How Volatile can help
+                    * *Volatile* will stop the compiler from being able to optimize this.
+                    * If the JVM analyses the runtime code, and determines that a synchronized() call point is completely unnecessary, it can eliminate the overhead completely.
+                    * Volatile, on the other hand, cannot be elminiated
+
+                </section>
+                <section data-markdown data-vertical="^\n\n\n">
+                    ## Software Design Patterns, Tips, and Tricks
+
+
+
+
+
+                    ## Thread Safe Lazy Loading
+                    * Multi-threaded variant of the Singleton Pattern.
+
+                    * One object shared among all threads.
+
+                    * Object is not initialized until it is needed.
+
+
+
+
+                    ## Properties that must hold true for a multi-threaded Singleton
+                    * Must not allow another thread to access the object while the object is still initializing.
+                        * Initializing Objects takes time!
+
+                    * Must only initialize the object once.
+                        * Two threads may start initialing the object at the same time.
+
+
+
+
+
+                    ## Double Check Locking
+                    * Check if object has been initialized yet.
+
+                    * if it has been created, just return a pointer to the already created object.
+
+                    * if it has not been created: Acquire a lock.
+
+                    * Check if the object has not been created *again*!
+                        * Another thread may have already initialized the object before you successfully acquired the lock.
+
+                    * if it has still not been created, initialize the object, and then return a pointer to the new object.
+
+                    * Return a pointer to the object.
+
+
+
+
+                    ## Example
+                    #### Can you identify the problem with this example?
+
+                    ```Java
+                    class Foo {
+                        private Helper helper = null;
+                        public Helper getHelper() {
+                            *if ( helper == null ) {
+                                synchronized(this) {
+                                    if (helper == null) { helper = new Helper(); }
+                                }
+                            }*
+                            return helper;
+                        }
+                     // other functions and members...
+                    }
+                    ```
+
+
+
+
+
+                    ## Example
+                    #### Declaring Helper Volatile guarantees a thread will not read a partially initialized object.
+
+                    ```Java
+                    class Foo {
+                        *private volatile Helper helper = null;*
+                        public Helper getHelper() {
+                            if ( helper == null ) {
+                                synchronized(this) {
+                                    if (helper == null) { helper = new Helper(); }
+                                }
+                            }
+                            return helper;
+                        }
+                     // other functions and members...
+                    }
+                    ```
+
+
+
+
+                    ## Multi-threaded Lazy Loading with Java Language Tricks
+                    #### Achieves lazy loading by using features guaranteed by the Java language
+
+                    ```Java
+                    *class Foo* {
+                        private static *class HelperHolder* {
+                            public static Helper helper = new Helper();
+                        }
+                        public static Helper getHelper() {
+                             *return HelperHolder.helper;*
+                        }
+                    }
+                    ```
+                    * Inner classes are not loaded until they are referenced
+
+                    * The class initialization phase is guaranteed by Java to be serial
+
+                    * Java uses an implicit lock on all Object Initializations
+                    [Section12.4.2 of the Java Language Specification](http://docs.oracle.com/javase/specs/jls/se7/html/jls-12.html#jls-12.4.2)
+
+
+
+
+
+                    ## Immutability
+                    > "Choose immutability and see where it takes you"
+                    > - Rich Hickey (Founder of Clojure)
+
+
+
+                    ## Final Fields
+                    * Thread Safe without locking!
+
+                    * Fields declared final are initialized once, and then never changed under normal circumstances.
+
+                    * Even if there is a race condition, or a cache inconsistency, a reference to a final field will be valid.
+
+                    * These guarantees allow the compiler to make many optimizations.
+
+
+
+
+
+
+                    ## Final Field Compiler Optimizations
+                    * Compilers have a great deal of freedom to move reads of final fields across synchronization barriers.
+
+                    * Compilers can to keep the value of a final field cached in a register and not reload it from memory.
+
+
+
+
+                    ## Final Field Initialization
+                    * An object is considered to be completely initialized when its constructor finishes.
+
+                    * Initialize the final fields for an object in the constructor.
+
+                    * Do not write a reference to the object being constructed in a place where another thread can see it before the object's constructor is finished.
+
+                    * When the object is seen by a thread, that thread will always see the correct values of the final fields.
+
+                    * It will also see versions of any object or array referenced by those final fields that are at least as up-to-date as the final fields are.
+
+
+
+
+
+                    ## Example
+                    ```Java
+                    class FinalFieldExample {
+                        *final int x;*
+                        int y;
+                        static FinalFieldExample f;
+
+                        public FinalFieldExample() { x = 3; y = 4; } //constructor
+
+                        static void writer() { f = new FinalFieldExample(); }
+                        static void reader() {
+                            *if (f != null)* {
+                                *int i = f.x; // guaranteed to see 3
+                                int j = f.y; // could see 0*
+                            }
+                        }
+                    }
+
+                    ```
+
+
+
+
+                    ## Java Strings
+                    * Java Strings are implemented with Final.
+
+                    * Many security features of the Java programming language depend upon String objects being immutable.
+
+                    * Any time a Java string is modified, a new String object is referenced, the raw data buffer is never changed.
+
+                    * String Pool saves memory by attempting to re-use old Strings if possible.
+
+
+
+
+                    ## Different String Alternatives
+                    * String vs. StringBuilder vs. StringBuffer
+
+                    * String : immutable
+                        * Memory inefficient but fast and very thread safe.
+
+                    * String Buffer  : mutable, but protected with locks.
+                        * Memory efficient but slow because of locks.
+
+                    * String Builder : mutable, no protection.
+                        * Raw Char buffer like C++ String.
+                        * Memory efficient and fast, but not thread safe at all.
+
+                </section>
+                <section data-markdown data-vertical="^\n\n\n">
+                    ## References and Further Reading
+                    * [The Official Java Tutorials on Concurrency](http://docs.oracle.com/javase/tutorial/essential/concurrency/index.html)
+                    * [Java Concurrency Package API](http://docs.oracle.com/javase/1.5.0/docs/api/java/util/concurrent/package-summary.html)
+                    * [Java Memory Model](http://www.cs.umd.edu/~pugh/java/memoryModel/)
+                    * [Java Concurrency in Practice (Book)](http://www.amazon.com/Java-Concurrency-Practice-Brian-Goetz/dp/0321349601)
+                    * [Java Perfomance Tuning](http://www.javaperformancetuning.com/news/qotm051.shtml)
+                    * [Java Specification on Final Fields](http://docs.oracle.com/javase/specs/jls/se7/html/jls-17.html#jls-17.5)
+                    * [Comparison of String Class Alternatives](http://javarevisited.blogspot.com/2011/07/string-vs-stringbuffer-vs-stringbuilder.html)
+                </section>
+                <section data-markdown data-vertical="^\n\n\n">
+                    ## Thank You
+                </section>
+            </div>
+        </div>
+
+        <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
+        <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+        <script src="reveal-js/lib/js/head.min.js"></script>
+        <script src="reveal-js/js/reveal.min.js"></script>
+
+        <script>
+            // Full list of configuration options available here:
+            // https://github.com/hakimel/reveal.js#configuration
+            Reveal.initialize({
+                controls: true,
+                progress: true,
+                history: true,
+                center: true,
+
+                theme: 'default', // available themes are in /css/theme
+                transition: 'linear', // default/cube/page/concave/zoom/linear/fade/none
+
+                // Parallax scrolling
+                parallaxBackgroundImage: 'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg',
+                parallaxBackgroundSize: '2100px 900px',
+
+                slideNumber: true,
+
+                keyboard : {
+                    49 : function() {
+                        $('section.present').toggleClass('highlight-code');
+                    }
+                },
+
+                // Optional libraries used to extend on reveal.js
+                dependencies: [
+                    { src: 'reveal-js/lib/js/classList.js', condition: function() { return !document.body.classList; } },
+                    { src: 'reveal-js/plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+                    { src: 'reveal-js/plugin/markdown/markdown.js',
+                    condition: function() { return !!document.querySelector( '[data-markdown]' ); },
+                    callback: function() {
+                        $('section > ul > li').addClass('fragment');
+                      }
+                    },
+                    { src: 'reveal-js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+                    { src: 'reveal-js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+                    { src: 'reveal-js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+                ]
+            });
+
+        </script>
+
+        <script>
+            // Custom code markup parsing to do *important* code hightlighting
+            Reveal.addEventListener( 'ready', function( event ) {
+                // We have to wait until mark-down is finished parsing.
+                // @TODO: Find a better way to do this without dumb waiting.
+                window.setTimeout(function(){
+                    // Wrap code marked with * in a spcecial span.
+                    $("code:contains('*')").each(function(){
+                        var html = $(this).html();
+                        var parse = html.split("*");
+                        var output = "";
+                        for (var i = 0; i < parse.length; i++) {
+                            switch(i%2) {
+                                case 0:
+                                    output += parse[i];
+                                    break;
+                                case 1:
+                                    output += '<span class="important-code">' + parse[i] + '</span>';
+                                    break;
+                            }
+                        };
+                        $(this).html(output);
+
+                        // Wrap any code that is not already wrapped in a span, so that the highlight effect will apply to it.
+                        $(this).contents().filter(function(){
+                          return this.nodeType == 3;
+                        }).each(function(){
+                            $(this).wrap('<span></span>');
+                        });
+                        // important code must not be nested. Remove the top layer span if it is.
+                        window.setTimeout(function(){
+                            $('code span:has(.important-code)').children().unwrap();
+                        }, 100);
+                    });
+                }, 250);
+            });
+        </script>
+    </body>
+</html>
