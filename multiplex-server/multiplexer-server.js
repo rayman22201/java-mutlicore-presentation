@@ -1,4 +1,4 @@
-var port = 1948;
+var port = 8080;
 var io = require('socket.io').listen(port);
 console.log('listening on Port: ' + port);
 
@@ -26,6 +26,11 @@ io.sockets.on('connection', function (socket) {
         // not very secure lol.
         if(data == 'cs780') {
             socket.emit('masterLoginSuccess');
+            io.sockets.emit('masterActive');
+
+            socket.on('disconnect', function(){
+                io.sockets.emit('masterInactive');
+            });
         }
     });
 });

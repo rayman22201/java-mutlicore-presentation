@@ -996,16 +996,34 @@
         </script>
         <script type="text/javascript">
             // Custom multiplexer code
-            var socket = io.connect('ec2-54-218-139-1.us-west-2.compute.amazonaws.com:1948');
+            // ec2-54-218-139-1.us-west-2.compute.amazonaws.com:80
+            var socket = io.connect('http://localhost:8080');
 
+            // Client Sync Callbacks.
+            socket.on('sync', function(data){
+                Reveal.slide(data.h, data.v, data.f);
+            });
+            socket.on('toggleHighlightCode', function(){
+                $('section.present').toggleClass('highlight-code');
+            });
+
+            // Status of the master.
+            var masterActive = false;
+            socket.on('masterActive', function(){
+                masterActive = true;
+            });
+            socket.on('masterInactive', function(){
+                masterActive = false;
+            });
+
+            // Master Log In Protocol.
             $('body').on('click',function(event){
-                if(event.clientX < 25 && event.clientY < 25) {
+                if(!masterActive && event.clientX < 25 && event.clientY < 25) {
                     var password = prompt("Please Enter the multiplex password","Password");
                     socket.emit('masterLogin', password);
                 }
             });
             socket.on('masterLoginSuccess', function() {
-                console.log('successfully logged in');
                 var masterSendSync = function() {
                     var masterIndeces = Reveal.getIndices();
                     socket.emit('masterSync', masterIndeces);
@@ -1018,13 +1036,6 @@
                 $('body').on('toggleHighlightCode', function(){
                     socket.emit('masterToggleHighlightCode');
                 });
-            });
-
-            socket.on('sync', function(data){
-                Reveal.slide(data.h, data.v, data.f);
-            });
-            socket.on('toggleHighlightCode', function(){
-                $('section.present').toggleClass('highlight-code');
             });
         </script>
     </body>
