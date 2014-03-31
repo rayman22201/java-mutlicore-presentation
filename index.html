@@ -772,6 +772,27 @@
 
 
 
+                    ## Example
+                    #### Using Java Atomic Updaters to achieve Lazy Loading
+
+                    ```Java
+                    class Foo {
+                        private volatile Helper helper = null;
+                        *private static final AtomicReferenceFieldUpdater<Foo,Helper> updater =
+                            AtomicReferenceFieldUpdater.newUpdater(Foo.class, Helper.class, "helper");*
+
+                        public Helper getHelper() {
+                            // compareAndSet(T obj, V expect, V update)
+                            *updater.compareAndSet( this, null, new Helper() );*
+                            return helper;
+                        }
+                     // other functions and members...
+                    }
+                    ```
+
+
+
+
                     ## Multi-threaded Lazy Loading with Java Language Tricks
                     #### Achieves lazy loading by using features guaranteed by the Java language
 
@@ -897,6 +918,7 @@
                     * [Java Perfomance Tuning](http://www.javaperformancetuning.com/news/qotm051.shtml)
                     * [Java Specification on Final Fields](http://docs.oracle.com/javase/specs/jls/se7/html/jls-17.html#jls-17.5)
                     * [Comparison of String Class Alternatives](http://javarevisited.blogspot.com/2011/07/string-vs-stringbuffer-vs-stringbuilder.html)
+                    * [Five things you didin't know about Java Mutithreading](http://www.ibm.com/developerworks/library/j-5things15/)
                 </section>
                 <section data-markdown data-vertical="^\n\n\n">
                     ## Thank You
@@ -983,11 +1005,20 @@
                             $(this).wrap('<span></span>');
                         });
                         // important code must not be nested. Remove the top layer span if it is.
+                        var highlightOn = false;
                         window.setTimeout(function(){
                             $('code span:has(.important-code)').children().unwrap();
                             $('code:has(.important-code)').on('click', function(event){
-                                $('section.present').toggleClass('highlight-code');
-                                $('body').trigger('toggleHighlightCode');
+                                if(!highlightOn) {
+                                    $('section.present').addClass('highlight-code');
+                                    highlightOn = true;
+                                    $('body').trigger('toggleHighlightCode');
+                                } else {
+                                    $('section.present').removeClass('highlight-code');
+                                    highlightOn = false;
+                                    $('body').trigger('toggleHighlightCode');
+                                }
+                                event.preventDefault();
                             });
                         }, 100);
                     });
