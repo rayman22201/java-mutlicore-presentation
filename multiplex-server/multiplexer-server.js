@@ -1,4 +1,8 @@
 var port = 8080;
+if(process.argv.length > 2 && typeof process.argv[2] != 'undefined' && !isNaN(process.argv[2])) {
+    port = Number(process.argv[2]);
+}
+
 var io = require('socket.io').listen(port);
 console.log('listening on Port: ' + port);
 
