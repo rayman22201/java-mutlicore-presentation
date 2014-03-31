@@ -906,6 +906,7 @@
 
         <script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
         <script src="http://code.jquery.com/jquery-migrate-1.2.1.min.js"></script>
+        <script src="http://cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js"></script>
         <script src="reveal-js/lib/js/head.min.js"></script>
         <script src="reveal-js/js/reveal.min.js"></script>
 
@@ -930,6 +931,7 @@
                 keyboard : {
                     49 : function() {
                         $('section.present').toggleClass('highlight-code');
+                        $('body').trigger('toggleHighlightCode');
                     }
                 },
 
@@ -946,7 +948,6 @@
                     { src: 'reveal-js/plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
                     { src: 'reveal-js/plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
                     { src: 'reveal-js/plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } },
-                    { src: '//cdnjs.cloudflare.com/ajax/libs/socket.io/0.9.16/socket.io.min.js', async: true },
                 ]
             });
 
@@ -984,9 +985,46 @@
                         // important code must not be nested. Remove the top layer span if it is.
                         window.setTimeout(function(){
                             $('code span:has(.important-code)').children().unwrap();
+                            $('code:has(.important-code)').on('click', function(event){
+                                $('section.present').toggleClass('highlight-code');
+                                $('body').trigger('toggleHighlightCode');
+                            });
                         }, 100);
                     });
                 }, 250);
+            });
+        </script>
+        <script type="text/javascript">
+            // Custom multiplexer code
+            var socket = io.connect('http://localhost:1948');
+
+            $('body').on('click',function(event){
+                if(event.clientX < 25 && event.clientY < 25) {
+                    var password = prompt("Please Enter the multiplex password","Password");
+                    socket.emit('masterLogin', password);
+                }
+            });
+            socket.on('masterLoginSuccess', function() {
+                console.log('successfully logged in');
+                var masterSendSync = function() {
+                    var masterIndeces = Reveal.getIndices();
+                    socket.emit('masterSync', masterIndeces);
+                };
+
+                masterSendSync();
+                Reveal.addEventListener( 'slidechanged', masterSendSync);
+                Reveal.addEventListener( 'fragmentshown', masterSendSync);
+                Reveal.addEventListener( 'fragmenthidden', masterSendSync);
+                $('body').on('toggleHighlightCode', function(){
+                    socket.emit('masterToggleHighlightCode');
+                });
+            });
+
+            socket.on('sync', function(data){
+                Reveal.slide(data.h, data.v, data.f);
+            });
+            socket.on('toggleHighlightCode', function(){
+                $('section.present').toggleClass('highlight-code');
             });
         </script>
     </body>

@@ -1,0 +1,25 @@
+{
+  "name": "multiplex-server",
+  "version": "0.1.0",
+  "description": "A custom multiplex server for use with Reveal.js",
+  "main": "multiplexer-server.js",
+  "dependencies": {
+    "socket.io": "~0.9.16"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:rayman22201/java-mutlicore-presentation.git"
+  },
+  "keywords": [
+    "reveal.js"
+  ],
+  "author": "Ray Imber",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/rayman22201/java-mutlicore-presentation/issues"
+  }
+}
