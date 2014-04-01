@@ -279,6 +279,19 @@
 
 
 
+                    ## The Optimal Thread Pool Size
+                    #### Little's Law
+                    ![Littles Law Equation](http://www.infoq.com/resource/articles/Java-Thread-Pool-Performance-Tuning/en/resources/7fig1.jpg)
+
+                    * Start with an arbitrary Pool Size.
+                    * Measure rate at which work unit requests arrive and the average amount of time to service them.
+                    * Calculate the average number of requests in the system.
+                    * If L is less than the pool size, reduce the pool size.
+                    * If L is greater than the pool size, determine if system can support a larger thread pool.
+
+
+
+
                     ## Concurrent Collections
                     * Pre-built data-structures and algorithms provided by Oracle that are Thread Safe and Thread Optimized.
 
@@ -919,6 +932,7 @@
                     * [Java Specification on Final Fields](http://docs.oracle.com/javase/specs/jls/se7/html/jls-17.html#jls-17.5)
                     * [Comparison of String Class Alternatives](http://javarevisited.blogspot.com/2011/07/string-vs-stringbuffer-vs-stringbuilder.html)
                     * [Five things you didin't know about Java Mutithreading](http://www.ibm.com/developerworks/library/j-5things15/)
+                    * [Thread Pool Perfomance Tuning](http://www.infoq.com/articles/Java-Thread-Pool-Performance-Tuning)
                 </section>
                 <section data-markdown data-vertical="^\n\n\n">
                     ## Thank You
