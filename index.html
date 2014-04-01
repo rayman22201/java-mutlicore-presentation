@@ -1037,7 +1037,7 @@
                         // important code must not be nested. Remove the top layer span if it is.
                         window.setTimeout(function(){
                             $('code span:has(.important-code)').children().unwrap();
-                            $('code:has(.important-code)').on('click', function(event){
+                            $('body').on('click', function(event){
                                 if(event.clientY < 250) {
                                     $('section.present').addClass('highlight-code');
                                     highlightOn = true;
