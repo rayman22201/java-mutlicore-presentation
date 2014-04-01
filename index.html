@@ -634,7 +634,6 @@
 
 
                     ## Compiler Transformations
-                    * Memory Accesses can be moved into a lock!
                     * One threads reads a variable and continually checks just that variable.
                     * Continues to read until a different thread changes the variable.
                     * compiler "may" look at the code and see that all the loop does is read the same variable, which never changes
@@ -921,6 +920,11 @@
                         * Raw Char buffer like C++ String.
                         * Memory efficient and fast, but not thread safe at all.
 
+
+
+                    ## String Alternatives Comparision
+                    ![String Alternatives Chart](images/Java_String_Chart.png)
+
                 </section>
                 <section data-markdown data-vertical="^\n\n\n">
                     ## References and Further Reading
@@ -933,6 +937,7 @@
                     * [Comparison of String Class Alternatives](http://javarevisited.blogspot.com/2011/07/string-vs-stringbuffer-vs-stringbuilder.html)
                     * [Five things you didin't know about Java Mutithreading](http://www.ibm.com/developerworks/library/j-5things15/)
                     * [Thread Pool Perfomance Tuning](http://www.infoq.com/articles/Java-Thread-Pool-Performance-Tuning)
+                    * [Implementing a Monitor Lock in Java](http://baptiste-wicht.com/posts/2010/09/java-concurrency-part-5-monitors-locks-and-conditions.html)
                 </section>
                 <section data-markdown data-vertical="^\n\n\n">
                     ## Thank You
