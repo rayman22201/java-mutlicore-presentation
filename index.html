@@ -505,6 +505,17 @@
 
                     ## Dangers of Improper Locking
                     ![Each object locks on itself](images/lock_on_this.jpg)
+
+
+
+                    ## Final Note about Synchronized
+                    * Recall that All Objects in Java implement the Monitor interface
+                    * Synchronized uses this implicit monitor to work
+                    * You can use the monitor directly in your code!
+                    * All of the Monitor Methods are available to you
+                        * wait()
+                        * notify()
+                        * notifyAll()
                     </section>
                     <section data-markdown data-vertical="^\n\n\n" data-notes="^Note:" class="small-ul">
                     ## Atomic Operations
