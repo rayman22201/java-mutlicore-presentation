@@ -1034,23 +1034,16 @@
                         }).each(function(){
                             $(this).wrap('<span></span>');
                         });
-                        // important code must not be nested. Remove the top layer span if it is.
-                        window.setTimeout(function(){
-                            $('code span:has(.important-code)').children().unwrap();
-                            $('body').on('click', function(event){
-                                if(event.clientY < 250) {
-                                    $('section.present').addClass('highlight-code');
-                                    highlightOn = true;
-                                    $('body').trigger('toggleHighlightCode');
-                                } else {
-                                    $('section.present').removeClass('highlight-code');
-                                    highlightOn = false;
-                                    $('body').trigger('toggleHighlightCode');
-                                }
-                                event.preventDefault();
-                            });
-                        }, 100);
                     });
+                    // important code must not be nested. Remove the top layer span if it is.
+                    window.setTimeout(function(){
+                        $('code span:has(.important-code)').children().unwrap();
+                        $('code:has(.important-code)').on('click', function(event){
+                            $('section.present').toggleClass('highlight-code');
+                            $('body').trigger('toggleHighlightCode');
+                            event.preventDefault();
+                        });
+                    }, 100);
                 }, 250);
             });
         </script>
