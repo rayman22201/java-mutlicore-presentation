@@ -1,10 +1,11 @@
 /**
- * This is the a very basic implementation of the Prision Switch problem.
- * It uses the One Thread / One Object memory model, but shares an external synchronized object to represent the room.
+ * A slightly more advanced version of the Prisoner Problem tha uses the ligthSwitchRoom class to demonstrate
+ * the use of volatile by implementing a custom version of an atomic boolean value.
  */
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 
-public class PrisonerSwitchA {
+public class PrisonerSwitchB {
     public static void main(String[] args) {
         int numPrisoners = 10;
         Thread prisonerThreads[] = new Thread[numPrisoners];
@@ -49,16 +50,19 @@ public class PrisonerSwitchA {
     }
 }
 
+/**
+ * We demonstrate using volatile and atomic updaters to by using a volatile integer to implement our own atomic boolean.
+ */
 class LightSwitchRoom {
-    private boolean lightSwitch = false;
+    private volatile int lightSwitch = 0;
+    private AtomicIntegerFieldUpdater<LightSwitchRoom> lightSwitchUpdater = AtomicIntegerFieldUpdater.newUpdater(LightSwitchRoom.class, "lightSwitch");
 
-    public synchronized boolean switchStatus() {
-        return this.lightSwitch;
+    public boolean switchStatus() {
+        return ( this.lightSwitchUpdater.get(this) == 1 );
     }
 
-    public synchronized boolean flipSwitch() {
-        this.lightSwitch = !this.lightSwitch;
-        return !this.lightSwitch;
+    public boolean flipSwitch(boolean expectedValue) {
+        return lightSwitchUpdater.compareAndSet(this, expectedValue ? 1 : 0, (!expectedValue) ? 1 : 0 );
     }
 }
 
@@ -85,15 +89,13 @@ class Prisoner implements Runnable {
 
             if( iAmTheLeader ) {
                 // Lock, get the switch status, and flip the switch.
-                if( prisonCommonRoom.flipSwitch() == true ) {
+                if( prisonCommonRoom.flipSwitch(true) ) {
                     myPrisonerCount++;
                     System.out.println("Lead Prisoner : Incrementing the count to : " + myPrisonerCount);
                 }
             } else {
-                // Lock and get the switch state.
-                if( prisonCommonRoom.switchStatus() == false ) {
-                    // Lock again, and flip the switch.
-                    prisonCommonRoom.flipSwitch();
+                // If the switch is false then flip it.
+                if( prisonCommonRoom.flipSwitch(false) ) {
                     System.out.println("Prisoner found the switch off and flips it on.");
                 } else {
                     System.out.println("Prisoner found the switch on and left it alone.");
