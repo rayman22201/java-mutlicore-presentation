@@ -82,6 +82,8 @@ class Prisoner implements Runnable {
     private boolean iAmTheLeader = false;
     private int numPrisoners;
 
+    // Volatile assures that the master thread with the main method always reads a valid value.
+    // The main thread is still a thread, so all the same rules for thread safety apply!
     public volatile int myPrisonerCount = 1;
 
     public Prisoner(LightSwitchRoom roomReference, int prisonerCount, boolean leaderStatus) {
