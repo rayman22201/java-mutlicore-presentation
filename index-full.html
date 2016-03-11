@@ -637,6 +637,116 @@ Note: i will always increment before j, but thread 2 could read a value for i, s
 
 
 
+## Implementation Details
+#### The Devil is in the details
+
+* CPU Scheduler
+
+* Memory Consistency
+
+* Compiler Transformations
+
+* Semantic Rules
+
+
+
+## Ordering of Events
+
+* Everything before an unlock (release) is Visible to everything after a later lock (acquire) on the same Object
+
+* The release pushes the updates...
+
+
+
+
+## Happens Before
+
+* Happens-before is transitive
+* Data races are avoided if you use "happens-before"
+* Action in VM. Not lines of code (Assembly Instructions)
+* There are tools that can check for data races
+    * JProbe - tool for java
+
+
+
+
+## Expectations
+* You would expect that the following over would be true:
+
+1. Get lock
+2. Make updates
+3. Push cache to main memory
+4. Release lock
+
+* You are NOT guaranteed to get this
+
+
+
+
+## Compiler Transformations
+* One threads reads a variable and continually checks just that variable.
+* Continues to read until a different thread changes the variable.
+* compiler "may" look at the code and see that all the loop does is read the same variable, which never changes
+* It "optimizes" it just by making it into an infinite loop and avoid the reads all together.
+
+
+
+
+## Example
+#### You write this:
+
+```java
+class OptimizeMe {
+
+    static boolean checkMe = true;
+
+    public threadOne() {
+        *while(checkMe == true)* {
+            //Do something that does not change the value of checkMe.
+        }
+    };
+
+    public threadTwo() {
+        Thread.sleep(4000);
+        *checkMe = false;*
+    }
+}
+```
+
+
+
+
+## Example (Transformed)
+#### A naive compiler may try to transform the code into this:
+
+```java
+class OptimizeMe {
+
+    static boolean checkMe = true;
+
+    public threadOne() {
+        *while(true)* {
+            //Do something that does not change the value of checkMe.
+        }
+    };
+
+    public threadTwo() {
+        Thread.sleep(4000);
+        checkMe = false;
+    }
+}
+```
+
+
+
+
+## How Volatile can help
+* *Volatile* will stop the compiler from being able to optimize this.
+* If the JVM analyses the runtime code, and determines that a synchronized() call point is completely unnecessary, it can eliminate the overhead completely.
+* Volatile, on the other hand, cannot be elminiated
+
+
+
 ## Atomic Operations
 * What operations are Atomic in Java?
 
@@ -670,6 +780,46 @@ Note: Atomic does not mean the cache will be synced properly. A write will be At
 * Maintains a set of variables internally to reduce contention over threads
 * Preferable when updates from multiple threads are more common than reads
 * The drawback is higher memory consumption from the extra variables
+
+
+
+## Immutability
+> "Choose immutability and see where it takes you"
+> - Rich Hickey (Founder of Clojure)
+
+
+
+## Final Fields
+* Thread Safe without locking!
+
+* Fields declared final are initialized once, and then never changed under normal circumstances.
+
+* Even if there is a race condition, or a cache inconsistency, a reference to a final field will be valid.
+
+* These guarantees allow the compiler to make many optimizations.
+
+
+
+
+## Final Field Compiler Optimizations
+* Compilers have a great deal of freedom to move reads of final fields across synchronization barriers.
+
+* Compilers can keep the value of a final field cached in a register and not reload it from memory.
+
+
+
+
+## Final Field Initialization
+* An object is considered to be completely initialized when its constructor finishes.
+
+* Initialize the final fields for an object in the constructor.
+
+* Do not write a reference to the object being constructed in a place where another thread can see it before the object's constructor is finished.
+
+* When the object is seen by a thread, that thread will always see the correct values of the final fields.
+
+* It will also see versions of any object or array referenced by those final fields that are at least as up-to-date as the final fields are.
+
 
 
 
@@ -773,6 +923,126 @@ class FinalFieldExample {
 
 ## String Alternatives Comparision
 ![String Alternatives Chart](images/Java_String_Chart.png)
+
+
+
+## Software Design Patterns, Tips, and Tricks
+
+
+
+## Thread Safe Lazy Loading
+* Multi-threaded variant of the Singleton Pattern.
+
+* One object shared among all threads.
+
+* Object is not initialized until it is needed.
+
+
+
+## Properties that must hold true for a multi-threaded Singleton
+* Must not allow another thread to access the object while the object is still initializing.
+    * Initializing Objects takes time!
+
+* Must only initialize the object once.
+    * Two threads may start initialing the object at the same time.
+
+
+
+## Double Check Locking
+* Check if object has been initialized yet.
+
+* if it has been created, just return a pointer to the already created object.
+
+* if it has not been created: Acquire a lock.
+
+* Check if the object has not been created *again*!
+    * Another thread may have already initialized the object before you successfully acquired the lock.
+
+* if it has still not been created, initialize the object, and then return a pointer to the new object.
+
+* Return a pointer to the object.
+
+
+
+## Example
+#### Can you identify the problem with this example?
+
+```Java
+class Foo {
+    private Helper helper = null;
+    public Helper getHelper() {
+        *if ( helper == null ) {
+            synchronized(this) {
+                if (helper == null) { helper = new Helper(); }
+            }
+        }*
+        return helper;
+    }
+ // other functions and members...
+}
+```
+
+
+
+## Example
+#### Declaring Helper Volatile guarantees a thread will not read a partially initialized object.
+
+```Java
+class Foo {
+    *private volatile Helper helper = null;*
+    public Helper getHelper() {
+        if ( helper == null ) {
+            synchronized(this) {
+                if (helper == null) { helper = new Helper(); }
+            }
+        }
+        return helper;
+    }
+ // other functions and members...
+}
+```
+
+
+
+## Example
+#### Using Java Atomic Updaters to achieve Lazy Loading
+
+```Java
+class Foo {
+    private volatile Helper helper = null;
+    *private static final AtomicReferenceFieldUpdater<Foo,Helper> updater =
+        AtomicReferenceFieldUpdater.newUpdater(Foo.class, Helper.class, "helper");*
+
+    public Helper getHelper() {
+        // compareAndSet(T obj, V expect, V update)
+        *updater.compareAndSet( this, null, new Helper() );*
+        return helper;
+    }
+ // other functions and members...
+}
+```
+
+
+
+## Multi-threaded Lazy Loading with Java Language Tricks
+#### Achieves lazy loading by using features guaranteed by the Java language
+
+```Java
+*class Foo* {
+    private static *class HelperHolder* {
+        public static Helper helper = new Helper();
+    }
+    public static Helper getHelper() {
+         *return HelperHolder.helper;*
+    }
+}
+```
+* Inner classes are not loaded until they are referenced
+
+* The class initialization phase is guaranteed by Java to be serial
+
+* Java uses an implicit lock on all Object Initializations
+[Section12.4.2 of the Java Language Specification](http://docs.oracle.com/javase/specs/jls/se7/html/jls-12.html#jls-12.4.2)
 
 
 

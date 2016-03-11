@@ -54,17 +54,22 @@
   * The Cost of a Volatile Cache flush
 
 ------------------------
+### Atomic Operations
+* Atomic Primatives
+* Atomic Class Methods
+* LongAdder, LongAccumulator
+
+
+### Futures (Java 8)
+* Futures Continued
+* Batching Futures
+
 
 ### Concurrent Collections
 * Common Concurrent Collections
 * Java Strings
 * Different String Alternatives
 * String Alternatives Comparison
-
-### Atomic Operations
-* Atomic Primatives
-* Atomic Class Methods
-* LongAdder, LongAccumulator
 
 ------------------------
 ### Resources
@@ -94,11 +99,6 @@
 * Final Field Compiler Optimizations
 * Final Field Intialization
   * Example
-
-
-### Futures (Java 8)
-* Futures Continued
-* Batching Futures
 
 
 ### Software Design Patterns, Tips, and Tricks
